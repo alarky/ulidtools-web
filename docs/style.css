@@ -11,6 +11,31 @@ body {
   padding: 1rem;
 }
 
+footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.github-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--pico-color, #24292f);
+  background: var(--pico-card-background-color, #f6f8fa);
+  border: 1px solid var(--pico-muted-border-color, #d0d7de);
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.github-btn:hover {
+  background: var(--pico-muted-border-color, #d0d7de);
+  text-decoration: none;
+}
+
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;
