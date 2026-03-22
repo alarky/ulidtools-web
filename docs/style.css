@@ -88,11 +88,6 @@ h2 {
   flex-wrap: wrap;
 }
 
-.controls label {
-  margin: 0;
-  font-weight: bold;
-}
-
 .controls input[type="text"] {
   margin: 0;
   flex: 1;
@@ -111,8 +106,18 @@ h2 {
 .result-block {
   border-left: 3px solid var(--pico-muted-border-color, #ccc);
   padding: 0.5rem 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   transition: border-color 0.3s;
+  background: rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .result-block {
+    background: rgba(255, 255, 255, 0.03);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
 }
 
 .result-row {
@@ -157,6 +162,48 @@ h2 {
   border-left-color: var(--copy-highlight);
 }
 
+/* Result view controls */
+.result-view-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.copy-all-btn {
+  width: auto;
+  margin: 0;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+/* Column list view */
+.column-list {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  font-size: 0.9rem;
+}
+
+.column-row {
+  padding: 0.2rem 0.4rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+}
+
+.column-row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .column-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.column-row.copied .result-value {
+  color: var(--copy-highlight);
+}
+
 /* Convert section */
 .convert-input {
   margin-bottom: 1rem;
@@ -179,27 +226,25 @@ h2 {
 /* Toast */
 .toast {
   position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-100%, -50%);
   background: var(--toast-bg);
   color: var(--toast-color);
-  padding: 0.5rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.9rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
   font-weight: bold;
   z-index: 1000;
   pointer-events: none;
-  animation: toast-in 0.2s ease-out;
 }
 
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
+.toast-enter, .toast-leave {
+  transition: opacity 0.2s ease;
+}
+
+.toast-visible {
+  opacity: 1;
+}
+
+.toast-hidden {
+  opacity: 0;
 }

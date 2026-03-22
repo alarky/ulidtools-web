@@ -131,7 +131,7 @@ function bytesToTimestamps(bytes) {
 function parseTimestamp(input, useUtc) {
   // Match: YYYY[-/]MM[-/]DD[T ]HH:MM[:SS[.sss]][tz]  or  YYYY[-/]MM[-/]DD
   const m = input.match(
-    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T ](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.(\d{1,3}))?)?)?(.*)$/
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T ](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.(\d+))?)?)?(.*)$/
   );
   if (!m) return null;
 
@@ -139,7 +139,7 @@ function parseTimestamp(input, useUtc) {
   const hours = h || '0';
   const minutes = min || '0';
   const seconds = sec || '0';
-  const millis = msStr ? msStr.padEnd(3, '0') : '0';
+  const millis = msStr ? msStr.slice(0, 3).padEnd(3, '0') : '0';
 
   // Detect timezone
   const tz = tzPart ? tzPart.trim() : '';
@@ -187,7 +187,7 @@ function detectFormat(input) {
 }
 
 // Convert any supported format to all formats
-function convertInput(input, useUtc) {
+function parseAndConvert(input, useUtc) {
   const trimmed = input.trim();
   const format = detectFormat(trimmed);
   if (!format) return null;
@@ -240,11 +240,46 @@ document.addEventListener('alpine:init', () => {
     convertResults: [],
     convertError: '',
     // Toast
+    // View
+    viewMode: 'all',
+    viewColumns: [
+      { key: 'all', label: 'All' },
+      { key: 'ulid', label: 'ULID' },
+      { key: 'id', label: 'uuid' },
+      { key: 'ts', label: 'timestamp' },
+    ],
+    // Toast
     copiedField: null,
     copiedTimeout: null,
+    toastX: 0,
+    toastY: 0,
 
     init() {
       this.generate();
+    },
+
+    get columnValues() {
+      return this.displayResults.map(r => {
+        switch (this.viewMode) {
+          case 'ulid': return r.ulid;
+          case 'id': return this.useUuid ? r.uuid : r.hex;
+          case 'ts': return this.useUtc ? r.timestamp.utc : r.timestamp.local;
+          default: return '';
+        }
+      });
+    },
+
+    async copyAllColumn(event) {
+      const text = this.columnValues.join('\n');
+      const rect = event.currentTarget.getBoundingClientRect();
+      await navigator.clipboard.writeText(text);
+      if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
+      this.toastX = rect.right - 8;
+      this.toastY = rect.top + rect.height / 2;
+      this.copiedField = 'copy-all';
+      this.copiedTimeout = setTimeout(() => {
+        this.copiedField = null;
+      }, 800);
     },
 
     get displayResults() {
@@ -297,7 +332,7 @@ document.addEventListener('alpine:init', () => {
       const errors = [];
       for (let i = 0; i < lines.length; i++) {
         try {
-          const result = convertInput(lines[i], this.useUtc);
+          const result = parseAndConvert(lines[i], this.useUtc);
           if (result) {
             results.push(result);
           } else {
@@ -321,9 +356,12 @@ document.addEventListener('alpine:init', () => {
       ];
     },
 
-    async copyValue(text, fieldId) {
+    async copyValue(text, fieldId, event) {
+      const rect = event.currentTarget.getBoundingClientRect();
       await navigator.clipboard.writeText(text);
       if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
+      this.toastX = rect.right - 8;
+      this.toastY = rect.top + rect.height / 2;
       this.copiedField = fieldId;
       this.copiedTimeout = setTimeout(() => {
         this.copiedField = null;

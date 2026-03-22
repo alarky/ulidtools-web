@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ULID Tools</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -51,12 +52,39 @@
 
       <!-- Right: Results -->
       <div class="col-result">
-        <template x-for="(r, ri) in displayResults" :key="ri">
-          <div class="result-block" :class="{ 'has-copied': copiedField && copiedField.startsWith(r._prefix) }">
-            <template x-for="f in resultFields(r, r._prefix)" :key="f.id">
-              <div class="result-row" :class="{ copied: copiedField === f.id }" @click="copyValue(f.value, f.id)">
-                <span class="result-label" x-text="f.label"></span>
-                <span class="result-value" x-text="f.value"></span>
+        <template x-if="displayResults.length > 0">
+          <div>
+            <div class="result-view-controls">
+              <div class="segment" >
+                <template x-for="col in viewColumns" :key="col.key">
+                  <span class="seg-option" :class="{ active: viewMode === col.key }" @click="viewMode = col.key" x-text="col.label"></span>
+                </template>
+              </div>
+              <button class="copy-all-btn" @click="copyAllColumn($event)" x-show="viewMode !== 'all'">Copy all</button>
+            </div>
+
+            <template x-if="viewMode === 'all'">
+              <div>
+                <template x-for="(r, ri) in displayResults" :key="ri">
+                  <div class="result-block" :class="{ 'has-copied': copiedField && copiedField.startsWith(r._prefix) }">
+                    <template x-for="f in resultFields(r, r._prefix)" :key="f.id">
+                      <div class="result-row" :class="{ copied: copiedField === f.id }" @click="copyValue(f.value, f.id, $event)">
+                        <span class="result-label" x-text="f.label"></span>
+                        <span class="result-value" x-text="f.value"></span>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </template>
+
+            <template x-if="viewMode !== 'all'">
+              <div class="column-list">
+                <template x-for="(val, vi) in columnValues" :key="vi">
+                  <div class="column-row" :class="{ copied: copiedField === 'col-' + vi }" @click="copyValue(val, 'col-' + vi, $event)">
+                    <span class="result-value" x-text="val"></span>
+                  </div>
+                </template>
               </div>
             </template>
           </div>
@@ -68,7 +96,13 @@
     </div>
 
     <!-- Toast -->
-    <div class="toast" x-show="copiedField" x-transition.opacity>Copied!</div>
+    <div class="toast" x-show="copiedField"
+      x-transition:enter="toast-enter"
+      x-transition:enter-start="toast-hidden"
+      x-transition:enter-end="toast-visible"
+      x-transition:leave="toast-leave"
+      x-transition:leave-start="toast-visible"
+      x-transition:leave-end="toast-hidden" :style="`left:${toastX}px;top:${toastY}px`">Copied!</div>
   </main>
 
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
