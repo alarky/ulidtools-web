@@ -6,17 +6,77 @@
 
 body {
   font-family: system-ui, sans-serif;
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1rem;
 }
 
-h1 {
-  margin-bottom: 0.5rem;
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.col-result {
+  min-width: 0;
+}
+
+.empty-results {
+  color: var(--pico-muted-color, #666);
+  font-size: 0.9rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.page-header h1 {
+  margin-bottom: 0;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.segment {
+  display: flex;
+  border: 1px solid var(--pico-muted-border-color, #ccc);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+}
+
+.seg-option {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  color: var(--pico-muted-color, #666);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.seg-option.active {
+  background-color: var(--pico-primary-background, #1a6fb5);
+  color: var(--pico-primary-inverse, #fff);
+}
+
+.col-input section:first-child h2 {
+  margin-top: 0;
 }
 
 h2 {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
   margin-bottom: 1rem;
 }
 
@@ -33,9 +93,14 @@ h2 {
   font-weight: bold;
 }
 
-.controls input[type="number"] {
-  width: 80px;
+.controls input[type="text"] {
   margin: 0;
+  flex: 1;
+}
+
+#count {
+  flex: 0;
+  width: 100px;
 }
 
 .controls button {
@@ -58,7 +123,6 @@ h2 {
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.15s;
-  position: relative;
 }
 
 .result-row:hover {
@@ -98,24 +162,17 @@ h2 {
   margin-bottom: 1rem;
 }
 
-.convert-input input {
+.convert-input textarea {
   font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
   width: 100%;
-}
-
-.detected-format {
-  font-size: 0.85rem;
-  color: var(--pico-muted-color, #666);
-  margin-bottom: 0.75rem;
-}
-
-.detected-format strong {
-  color: var(--pico-color, inherit);
+  resize: vertical;
+  font-size: 0.9rem;
 }
 
 .error-msg {
   color: var(--pico-del-color, #c62828);
   font-size: 0.9rem;
+  white-space: pre-line;
   margin-bottom: 0.5rem;
 }
 

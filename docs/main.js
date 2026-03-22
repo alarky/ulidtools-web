@@ -41,8 +41,13 @@ function encodeRandom(len) {
   return str;
 }
 
-function generateULID() {
-  const now = Date.now();
+const MAX_ULID_TIMESTAMP = 2 ** 48 - 1;
+
+function generateULID(timestamp) {
+  const now = timestamp !== undefined ? timestamp : Date.now();
+  if (now < 0 || now > MAX_ULID_TIMESTAMP) {
+    throw new Error('Timestamp out of range for ULID');
+  }
   const timeStr = encodeTime(now, 10);
   const randStr = encodeRandom(10); // 10 bytes = 80 bits
   return timeStr + randStr;
@@ -104,13 +109,59 @@ function uuidToBytes(uuid) {
   return hexToBytes(hex);
 }
 
-// Extract timestamp from 16-byte Uint8Array (first 48 bits)
-function bytesToTimestamp(bytes) {
+// Extract timestamps from 16-byte Uint8Array (first 48 bits)
+function bytesToTimestamps(bytes) {
   let ms = 0;
   for (let i = 0; i < 6; i++) {
     ms = ms * 256 + bytes[i];
   }
-  return new Date(ms).toISOString();
+  const d = new Date(ms);
+  const utc = d.toISOString();
+  const pad = (n, len = 2) => String(n).padStart(len, '0');
+  const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+  // Timezone offset string like +09:00 or -05:00
+  const offset = -d.getTimezoneOffset();
+  const sign = offset >= 0 ? '+' : '-';
+  const tzStr = `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+  return { utc, local: local + tzStr };
+}
+
+// Parse flexible timestamp string into epoch ms
+// Returns { ms, hasTz } or null if not a timestamp
+function parseTimestamp(input, useUtc) {
+  // Match: YYYY[-/]MM[-/]DD[T ]HH:MM[:SS[.sss]][tz]  or  YYYY[-/]MM[-/]DD
+  const m = input.match(
+    /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T ](\d{1,2}):(\d{1,2})(?::(\d{1,2})(?:\.(\d{1,3}))?)?)?(.*)$/
+  );
+  if (!m) return null;
+
+  const [, year, month, day, h, min, sec, msStr, tzPart] = m;
+  const hours = h || '0';
+  const minutes = min || '0';
+  const seconds = sec || '0';
+  const millis = msStr ? msStr.padEnd(3, '0') : '0';
+
+  // Detect timezone
+  const tz = tzPart ? tzPart.trim() : '';
+  let hasTz = false;
+  let iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}.${millis}`;
+
+  if (tz === 'Z' || tz === 'z') {
+    iso += 'Z';
+    hasTz = true;
+  } else if (/^[+\-]\d{1,2}(:\d{2})?$/.test(tz)) {
+    iso += tz;
+    hasTz = true;
+  } else if (tz === '') {
+    // No timezone specified — use global setting
+    iso += useUtc ? 'Z' : '';
+  } else {
+    return null; // unknown trailing text
+  }
+
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return { ms: d.getTime(), hasTz };
 }
 
 // Detect input format
@@ -124,15 +175,19 @@ function detectFormat(input) {
   if (/^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/.test(trimmed)) {
     return 'ulid';
   }
-  // Hex: 32 hex chars
-  if (/^[0-9a-f]{32}$/i.test(trimmed)) {
+  // Hex: 32 hex chars, optionally with 0x prefix
+  if (/^(?:0x)?[0-9a-f]{32}$/i.test(trimmed)) {
     return 'hex';
+  }
+  // Timestamp (flexible)
+  if (/^\d{4}[\/\-]/.test(trimmed)) {
+    return 'timestamp';
   }
   return null;
 }
 
 // Convert any supported format to all formats
-function convertInput(input) {
+function convertInput(input, useUtc) {
   const trimmed = input.trim();
   const format = detectFormat(trimmed);
   if (!format) return null;
@@ -146,8 +201,19 @@ function convertInput(input) {
       bytes = uuidToBytes(trimmed);
       break;
     case 'hex':
-      bytes = hexToBytes(trimmed);
+      bytes = hexToBytes(trimmed.replace(/^0x/i, ''));
       break;
+    case 'timestamp': {
+      const parsed = parseTimestamp(trimmed, useUtc);
+      if (!parsed) return null;
+      bytes = new Uint8Array(16);
+      let val = BigInt(parsed.ms);
+      for (let i = 5; i >= 0; i--) {
+        bytes[i] = Number(val & 0xFFn);
+        val >>= 8n;
+      }
+      break;
+    }
   }
 
   return {
@@ -155,7 +221,7 @@ function convertInput(input) {
     ulid: bytesToUlid(bytes),
     uuid: bytesToUuid(bytes),
     hex: bytesToHex(bytes),
-    timestamp: bytesToTimestamp(bytes),
+    timestamp: bytesToTimestamps(bytes),
   };
 }
 
@@ -163,11 +229,15 @@ function convertInput(input) {
 document.addEventListener('alpine:init', () => {
   Alpine.data('ulidApp', () => ({
     // Generate
-    count: 5,
-    results: [],
+    countInput: '',
+    customTime: '',
+    useUtc: true,
+    useUuid: true,
+    genResults: [],
+    genError: '',
     // Convert
     convertInput: '',
-    convertResult: null,
+    convertResults: [],
     convertError: '',
     // Toast
     copiedField: null,
@@ -177,62 +247,87 @@ document.addEventListener('alpine:init', () => {
       this.generate();
     },
 
-    generate() {
-      this.results = [];
-      for (let i = 0; i < this.count; i++) {
-        const ulid = generateULID();
-        const bytes = ulidToBytes(ulid);
-        this.results.push({
-          ulid,
-          uuid: bytesToUuid(bytes),
-          hex: bytesToHex(bytes),
-          timestamp: bytesToTimestamp(bytes),
-        });
+    get displayResults() {
+      if (this.convertResults.length > 0) {
+        return this.convertResults.map((r, i) => ({ ...r, _prefix: 'conv-' + i }));
       }
+      return this.genResults.map((r, i) => ({ ...r, _prefix: 'gen-' + i }));
     },
 
-    reset() {
-      this.results = [];
-      this.count = 5;
+    generate() {
+      this.convertInput = '';
+      this.convertResults = [];
+      this.convertError = '';
+      this.genResults = [];
+      this.genError = '';
+      let ts;
+      if (this.customTime.trim()) {
+        const parsed = parseTimestamp(this.customTime.trim(), this.useUtc);
+        if (!parsed) {
+          this.genError = 'Invalid timestamp format.';
+          return;
+        }
+        ts = parsed.ms;
+      }
+      try {
+        const count = parseInt(this.countInput, 10) || 5;
+        for (let i = 0; i < Math.min(Math.max(count, 1), 100); i++) {
+          const ulid = generateULID(ts);
+          const bytes = ulidToBytes(ulid);
+          this.genResults.push({
+            ulid,
+            uuid: bytesToUuid(bytes),
+            hex: bytesToHex(bytes),
+            timestamp: bytesToTimestamps(bytes),
+          });
+        }
+      } catch (e) {
+        this.genError = e.message;
+      }
     },
 
     convert() {
-      this.convertResult = null;
+      this.genResults = [];
+      this.genError = '';
+      this.convertResults = [];
       this.convertError = '';
       if (!this.convertInput.trim()) return;
-      try {
-        const result = convertInput(this.convertInput);
-        if (!result) {
-          this.convertError = 'Invalid input. Please enter a valid ULID, UUID, or hex string.';
-          return;
+      const lines = this.convertInput.split('\n').map(l => l.trim()).filter(Boolean);
+      const results = [];
+      const errors = [];
+      for (let i = 0; i < lines.length; i++) {
+        try {
+          const result = convertInput(lines[i], this.useUtc);
+          if (result) {
+            results.push(result);
+          } else {
+            errors.push(`Line ${i + 1}: invalid input`);
+          }
+        } catch (e) {
+          errors.push(`Line ${i + 1}: ${e.message}`);
         }
-        this.convertResult = result;
-      } catch (e) {
-        this.convertError = e.message;
+      }
+      this.convertResults = results;
+      if (errors.length > 0) {
+        this.convertError = errors.join('\n');
       }
     },
 
+    resultFields(r, prefix) {
+      return [
+        { label: 'ULID:', value: r.ulid, id: prefix + '-ulid' },
+        { label: this.useUuid ? 'uuid:' : 'hex:', value: this.useUuid ? r.uuid : r.hex, id: prefix + '-id' },
+        { label: 'timestamp:', value: this.useUtc ? r.timestamp.utc : r.timestamp.local, id: prefix + '-ts' },
+      ];
+    },
+
     async copyValue(text, fieldId) {
-      try {
-        await navigator.clipboard.writeText(text);
-        if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
-        this.copiedField = fieldId;
-        this.copiedTimeout = setTimeout(() => {
-          this.copiedField = null;
-        }, 800);
-      } catch {
-        // fallback
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-        this.copiedField = fieldId;
-        this.copiedTimeout = setTimeout(() => {
-          this.copiedField = null;
-        }, 800);
-      }
+      await navigator.clipboard.writeText(text);
+      if (this.copiedTimeout) clearTimeout(this.copiedTimeout);
+      this.copiedField = fieldId;
+      this.copiedTimeout = setTimeout(() => {
+        this.copiedField = null;
+      }, 800);
     },
   }));
 });

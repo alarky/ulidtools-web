@@ -9,75 +9,63 @@
 </head>
 <body>
   <main x-data="ulidApp">
-    <h1>ULID Tools</h1>
+    <div class="page-header">
+      <h1>ULID Tools</h1>
+      <div class="toggle-group">
+        <div class="segment" @click="useUuid = !useUuid">
+          <span class="seg-option" :class="{ active: useUuid }">uuid</span>
+          <span class="seg-option" :class="{ active: !useUuid }">hex</span>
+        </div>
+        <div class="segment" @click="useUtc = !useUtc">
+          <span class="seg-option" :class="{ active: useUtc }">UTC</span>
+          <span class="seg-option" :class="{ active: !useUtc }">Localtime</span>
+        </div>
+      </div>
+    </div>
 
-    <!-- Generate Section -->
-    <section>
-      <h2>Generate</h2>
-      <div class="controls">
-        <label for="count">Count:</label>
-        <input type="number" id="count" x-model.number="count" min="1" max="100">
-        <button @click="generate()">Generate</button>
-        <button class="secondary" @click="reset()">Reset</button>
+    <div class="two-col">
+      <!-- Left: Inputs -->
+      <div class="col-input">
+        <section>
+          <h2>Generate</h2>
+          <div class="controls">
+            <input type="text" id="customTime" x-model="customTime" placeholder="timestamp: now" spellcheck="false" autocomplete="off" @keydown.enter="generate()" title="Timestamp">
+            <input type="text" id="count" x-model="countInput" placeholder="cnt: 5" @keydown.enter="generate()" title="Count" inputmode="numeric">
+            <button @click="generate()">Generate</button>
+          </div>
+          <template x-if="genError">
+            <div class="error-msg" x-text="genError"></div>
+          </template>
+        </section>
+
+        <section>
+          <h2>Convert</h2>
+          <div class="convert-input">
+            <textarea placeholder="Enter ULID, UUID, hex, or timestamp (one per line)..." x-model="convertInput" @input="convert()" spellcheck="false" autocomplete="off" rows="10"></textarea>
+          </div>
+          <template x-if="convertError">
+            <div class="error-msg" x-text="convertError"></div>
+          </template>
+        </section>
       </div>
 
-      <template x-for="(r, ri) in results" :key="ri">
-        <div class="result-block" :class="{ 'has-copied': copiedField && copiedField.startsWith('gen-' + ri) }">
-          <div class="result-row" :class="{ copied: copiedField === 'gen-' + ri + '-ulid' }" @click="copyValue(r.ulid, 'gen-' + ri + '-ulid')">
-            <span class="result-label">ULID:</span>
-            <span class="result-value" x-text="r.ulid"></span>
+      <!-- Right: Results -->
+      <div class="col-result">
+        <template x-for="(r, ri) in displayResults" :key="ri">
+          <div class="result-block" :class="{ 'has-copied': copiedField && copiedField.startsWith(r._prefix) }">
+            <template x-for="f in resultFields(r, r._prefix)" :key="f.id">
+              <div class="result-row" :class="{ copied: copiedField === f.id }" @click="copyValue(f.value, f.id)">
+                <span class="result-label" x-text="f.label"></span>
+                <span class="result-value" x-text="f.value"></span>
+              </div>
+            </template>
           </div>
-          <div class="result-row" :class="{ copied: copiedField === 'gen-' + ri + '-uuid' }" @click="copyValue(r.uuid, 'gen-' + ri + '-uuid')">
-            <span class="result-label">uuid:</span>
-            <span class="result-value" x-text="r.uuid"></span>
-          </div>
-          <div class="result-row" :class="{ copied: copiedField === 'gen-' + ri + '-hex' }" @click="copyValue(r.hex, 'gen-' + ri + '-hex')">
-            <span class="result-label">hex:</span>
-            <span class="result-value" x-text="r.hex"></span>
-          </div>
-          <div class="result-row" :class="{ copied: copiedField === 'gen-' + ri + '-ts' }" @click="copyValue(r.timestamp, 'gen-' + ri + '-ts')">
-            <span class="result-label">timestamp:</span>
-            <span class="result-value" x-text="r.timestamp"></span>
-          </div>
-        </div>
-      </template>
-    </section>
-
-    <!-- Convert Section -->
-    <section>
-      <h2>Convert</h2>
-      <div class="convert-input">
-        <input type="text" placeholder="Enter ULID, UUID, or hex..." x-model="convertInput" @input="convert()" spellcheck="false" autocomplete="off">
+        </template>
+        <template x-if="displayResults.length === 0">
+          <div class="empty-results">No results yet.</div>
+        </template>
       </div>
-
-      <template x-if="convertResult">
-        <div>
-          <div class="detected-format">Detected format: <strong x-text="convertResult.format.toUpperCase()"></strong></div>
-          <div class="result-block" :class="{ 'has-copied': copiedField && copiedField.startsWith('conv-') }">
-            <div class="result-row" :class="{ copied: copiedField === 'conv-ulid' }" @click="copyValue(convertResult.ulid, 'conv-ulid')">
-              <span class="result-label">ULID:</span>
-              <span class="result-value" x-text="convertResult.ulid"></span>
-            </div>
-            <div class="result-row" :class="{ copied: copiedField === 'conv-uuid' }" @click="copyValue(convertResult.uuid, 'conv-uuid')">
-              <span class="result-label">uuid:</span>
-              <span class="result-value" x-text="convertResult.uuid"></span>
-            </div>
-            <div class="result-row" :class="{ copied: copiedField === 'conv-hex' }" @click="copyValue(convertResult.hex, 'conv-hex')">
-              <span class="result-label">hex:</span>
-              <span class="result-value" x-text="convertResult.hex"></span>
-            </div>
-            <div class="result-row" :class="{ copied: copiedField === 'conv-ts' }" @click="copyValue(convertResult.timestamp, 'conv-ts')">
-              <span class="result-label">timestamp:</span>
-              <span class="result-value" x-text="convertResult.timestamp"></span>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <template x-if="convertError">
-        <div class="error-msg" x-text="convertError"></div>
-      </template>
-    </section>
+    </div>
 
     <!-- Toast -->
     <div class="toast" x-show="copiedField" x-transition.opacity>Copied!</div>
