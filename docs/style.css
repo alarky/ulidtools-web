@@ -1,0 +1,148 @@
+:root {
+  --copy-highlight: #2ecc40;
+  --toast-bg: #2ecc40;
+  --toast-color: #fff;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1 {
+  margin-bottom: 0.5rem;
+}
+
+h2 {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.controls label {
+  margin: 0;
+  font-weight: bold;
+}
+
+.controls input[type="number"] {
+  width: 80px;
+  margin: 0;
+}
+
+.controls button {
+  margin: 0;
+  width: auto;
+}
+
+.result-block {
+  border-left: 3px solid var(--pico-muted-border-color, #ccc);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  transition: border-color 0.3s;
+}
+
+.result-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.15s;
+  position: relative;
+}
+
+.result-row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  .result-row:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.result-label {
+  font-weight: bold;
+  min-width: 90px;
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: var(--pico-muted-color, #666);
+}
+
+.result-value {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  word-break: break-all;
+  font-size: 0.9rem;
+}
+
+.result-row.copied .result-value {
+  color: var(--copy-highlight);
+}
+
+.result-block.has-copied {
+  border-left-color: var(--copy-highlight);
+}
+
+/* Convert section */
+.convert-input {
+  margin-bottom: 1rem;
+}
+
+.convert-input input {
+  font-family: 'SF Mono', 'Fira Code', 'Fira Mono', 'Roboto Mono', monospace;
+  width: 100%;
+}
+
+.detected-format {
+  font-size: 0.85rem;
+  color: var(--pico-muted-color, #666);
+  margin-bottom: 0.75rem;
+}
+
+.detected-format strong {
+  color: var(--pico-color, inherit);
+}
+
+.error-msg {
+  color: var(--pico-del-color, #c62828);
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--toast-bg);
+  color: var(--toast-color);
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  z-index: 1000;
+  pointer-events: none;
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
