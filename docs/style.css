@@ -1,3 +1,5 @@
+[x-cloak] { display: none !important; }
+
 :root {
   --copy-highlight: #2ecc40;
   --toast-bg: #2ecc40;
