@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#1a6fb5"/><text x="32" y="42" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="bold" font-size="20" fill="#fff">ULID</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="32" height="32">
+  <!-- Background -->
+  <rect width="200" height="200" rx="32" fill="#0A0A1A"/>
+
+  <!-- Right ear, bottom edge flush with canvas -->
+  <polygon points="135,200 177,129 168,5 56,111 23,200" fill="#00D4AA"/>
+</svg>
