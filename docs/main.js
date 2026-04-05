@@ -82,7 +82,7 @@ document.addEventListener('alpine:init', () => {
       }
       try {
         const count = parseInt(this.countInput, 10) || 5;
-        for (let i = 0; i < Math.min(Math.max(count, 1), 100); i++) {
+        for (let i = 0; i < Math.min(Math.max(count, 1), 10000); i++) {
           const ulid = generateULID(ts);
           const bytes = ulidToBytes(ulid);
           this.genResults.push({
