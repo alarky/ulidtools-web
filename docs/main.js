@@ -1,3 +1,5 @@
+// Alpine.js application for ULID Tools
+// ULID Toolsの Alpine.js アプリケーション
 import {
   generateULID, ulidToBytes, bytesToUuid, bytesToHex,
   bytesToTimestamps, parseTimestamp, parseAndConvert,
@@ -5,18 +7,20 @@ import {
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('ulidApp', () => ({
-    // Generate
+    // --- State: Generate / 生成の状態 ---
     countInput: '',
     customTime: '',
-    useUtc: true,
-    useUuid: true,
+    useUtc: true,       // Toggle UTC / Localtime display / UTC・ローカルタイム表示切替
+    useUuid: true,      // Toggle uuid / hex display / uuid・hex 表示切替
     genResults: [],
     genError: '',
-    // Convert
+
+    // --- State: Convert / 変換の状態 ---
     convertInput: '',
     convertResults: [],
     convertError: '',
-    // View
+
+    // --- State: Result view / 結果表示の状態 ---
     viewMode: 'all',
     viewColumns: [
       { key: 'all', label: 'All' },
@@ -24,16 +28,20 @@ document.addEventListener('alpine:init', () => {
       { key: 'id', label: 'uuid' },
       { key: 'ts', label: 'timestamp' },
     ],
-    // Toast
+
+    // --- State: Copy toast / コピー通知トーストの状態 ---
     copiedField: null,
     copiedTimeout: null,
     toastX: 0,
     toastY: 0,
 
+    // Generate ULIDs on init / 初期化時にULIDを生成
     init() {
       this.generate();
     },
 
+    // Return values for single-column view mode
+    // カラムモード表示用の値一覧を返す
     get columnValues() {
       return this.displayResults.map(r => {
         switch (this.viewMode) {
@@ -45,6 +53,8 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
+    // Copy all values in the current column view to clipboard
+    // 現在のカラム表示の全値をクリップボードにコピー
     async copyAllColumn(event) {
       const text = this.columnValues.join('\n');
       const rect = event.currentTarget.getBoundingClientRect();
@@ -58,6 +68,8 @@ document.addEventListener('alpine:init', () => {
       }, 800);
     },
 
+    // Merge generate/convert results for display; convert takes priority
+    // 表示用に生成・変換結果を統合（変換結果があればそちらを優先）
     get displayResults() {
       if (this.convertResults.length > 0) {
         return this.convertResults.map((r, i) => ({ ...r, _prefix: 'conv-' + i }));
@@ -65,6 +77,8 @@ document.addEventListener('alpine:init', () => {
       return this.genResults.map((r, i) => ({ ...r, _prefix: 'gen-' + i }));
     },
 
+    // Generate ULIDs with optional custom timestamp and count (max 10000)
+    // 任意のタイムスタンプ・件数でULIDを生成（最大10000件）
     generate() {
       this.convertInput = '';
       this.convertResults = [];
@@ -97,6 +111,8 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Parse each line of input and convert between ULID/UUID/hex/timestamp
+    // 入力の各行をパースし、ULID・UUID・hex・タイムスタンプ間で相互変換
     convert() {
       this.genResults = [];
       this.genError = '';
@@ -124,6 +140,8 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Build field list for "All" view mode (ULID, uuid/hex, timestamp)
+    // 「All」表示モード用のフィールド一覧を生成（ULID, uuid/hex, timestamp）
     resultFields(r, prefix) {
       return [
         { label: 'ULID:', value: r.ulid, id: prefix + '-ulid' },
@@ -132,6 +150,8 @@ document.addEventListener('alpine:init', () => {
       ];
     },
 
+    // Copy a single value to clipboard and show toast at click position
+    // 値をクリップボードにコピーし、クリック位置にトーストを表示
     async copyValue(text, fieldId, event) {
       const rect = event.currentTarget.getBoundingClientRect();
       await navigator.clipboard.writeText(text);
